@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.0/socket.io.js"></script>
+  <style>
+    body {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    #board {
+      display: grid;
+      grid-template-columns: repeat(8, 50px);
+      grid-gap: 2px;
+    }
+
+    .box {
+      position: relative;
+      width: 50px;
+      height: 50px;
+      border: 1px solid #000;
+      box-sizing: border-box;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    #image {
+      max-width: 100%;
+      max-height: 100%;
+    }
+
+    #player {
+      font-size: 24px;
+    }
+  </style>
+</head>
+<body>
+  <div>
+    <h1>Player Id: <span id="player"></span></h1>
+    
+  </div>
+  <div id="board">
+  </div>
+  <script>
+    const socket = io();
+    let playerId;
+    let isPlayerTurn = false;
+    let moveTimeout;
+
+    socket.on('setPlayerId', (id) => {
+      playerId = id;
+      console.log('Player ID:', playerId);
+    });
+
+    socket.on('message', (message) => {
+      console.log(message);
+    });
+
+    socket.on('move', (data) => {
+      const image = document.getElementById('image');
+      image.src = 'Peg.png';
+      const clickedBox = document.querySelector(`[data-row="${data.row}"][data-col="${data.col}"]`);
+      if (clickedBox.getAttribute('data-row') == 7 && clickedBox.getAttribute('data-col') == 0){
+        clickedBox.appendChild(image);
+        setTimeout(function() {
+          alert("Game Over")
+        }, 1000);
+      } else {
+        clickedBox.appendChild(image);
+      }
+      });
+
+    socket.on('currentTurn', (currentTurnId) => {
+      isPlayerTurn = currentTurnId === playerId;
+      document.getElementById("player").innerHTML = currentTurnId;
+      updateTurnMessage();
+
+      // If it's the player's turn, start the 10-second timer
+      if (isPlayerTurn) {
+        startTurnTimer();
+      } else {
+        // If it's not the player's turn, clear the timer
+        clearTimeout(moveTimeout);
+      }
+    });
+
+    function startTurnTimer() {
+      // Clear any existing timer
+      clearTimeout(moveTimeout);
+
+      // Set a new 10-second timer
+      moveTimeout = setTimeout(() => {
+        console.log('Time is up! Switching turn.');
+        switchTurn();
+      }, 10000);
+    }
+
+    function switchTurn() {
+      socket.emit('switchTurn');
+    }
+
+    function updateTurnMessage() {
+      const message = isPlayerTurn ? 'Your turn!' : 'Wait for your turn!';
+      console.log(message);
+    }
+
+    function isValidMove(box, clickedRow, clickedCol) {
+      const currentRow = parseInt(box.getAttribute('data-row'));
+      const currentCol = parseInt(box.getAttribute('data-col'));
+
+      const isLeft = clickedCol < currentCol && clickedRow == currentRow;
+      const isDown = clickedRow > currentRow && clickedCol == currentCol;
+
+      console.log(clickedCol,clickedRow)
+      console.log(currentCol,currentRow)
+
+      return isLeft || isDown;
+    }
+
+    function handleBoxClick(event) {
+      if (!isPlayerTurn) {
+        console.log('Wait for your turn!');
+        return;
+      }
+
+      const clickedBox = event.target;
+      const clickedRow = parseInt(clickedBox.getAttribute('data-row'));
+      const clickedCol = parseInt(clickedBox.getAttribute('data-col'));
+
+      const image = document.getElementById('image');
+      const currentRow = parseInt(image.parentNode.getAttribute('data-row'));
+      const currentCol = parseInt(image.parentNode.getAttribute('data-col'));
+
+      // Validate the move on the client side before sending it to the server
+      if (isValidMove(image.parentNode, clickedRow, clickedCol)) {
+        socket.emit('move', { row: clickedRow, col: clickedCol, player: playerId });
+      } else {
+        console.log('Invalid move on the client side!');
+      }
+    }
+
+    function createBoard() {
+      const boardElement = document.getElementById('board');
+
+      for (let i = 0; i < 8; i++) {
+        for (let j = 0; j < 8; j++) {
+          const box = document.createElement('div');
+          box.classList.add('box');
+          box.setAttribute('data-row', i);
+          box.setAttribute('data-col', j);
+          box.addEventListener('click', handleBoxClick);
+          boardElement.appendChild(box);
+        }
+      }
+
+      const image = document.createElement('img');
+      image.id = 'image';
+      image.src = 'Peg.png';
+      document.querySelector('[data-row="0"][data-col="7"]').appendChild(image);
+    
+      const initialX = 0; // Replace with the initial coordinates
+      const initialY = 7; // Replace with the initial coordinates
+      socket.emit('validateMove', { x: initialX, y: initialY });
+    }
+
+    createBoard();
+  </script>
+</body>
+</html>
