@@ -13,10 +13,11 @@ Overview
     - The player who reaches the bottom-left corner of the board first wins the game.
 
    How to start the game 
-   1)Clone the repository 
-   2)Run the command - npm i
-   3)Run the server using the command - npm start 
-   4)after the server is running open two tabs with http://localhost:3000/
+   
+   1)Clone the repository  <br />
+   2)Run the command - npm i <br />
+   3)Run the server using the command - npm start <br /> 
+   4)after the server is running open two tabs with http://localhost:3000/ <br />
 
    
    
